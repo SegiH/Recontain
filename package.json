@@ -1,0 +1,9 @@
+{
+  "type": "commonjs",
+  "dependencies": {
+    "command-exists": "^1.2.9",
+    "config": "^3.3.9",
+    "inquirer": "^8.2.6",
+    "readline-sync": "^1.4.10"
+  }
+}

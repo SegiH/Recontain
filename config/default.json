@@ -1,0 +1,6 @@
+{
+     "RecontainRulesFile": "",
+     "DefaultComposeDirectory": "",
+     "Silent": true,
+     "UsePodman": false
+}

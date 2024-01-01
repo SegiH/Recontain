@@ -120,15 +120,19 @@ const recontainMenuMap = {
                     "PreviousAction": "Main Menu",
                     "MenuOptions": {
                          "Inspect an image": {
+                              "PreviousAction": "Images",
                               "NextAction": "InspectImageAction"
                          },
                          "Prune unused images": {
+                              "PreviousAction": "Images",
                               "NextAction": "PruneImageAction"
                          },
                          "Remove an image": {
+                              "PreviousAction": "Images",
                               "NextAction": "RemoveImageAction"
                          },
                          "Update an image": {
+                              "PreviousAction": "Images",
                               "NextAction": "UpdateImageAction"
                          }
                     },
@@ -833,6 +837,7 @@ function promptMainMenu() {
 }
 
 function promptComposeFiles() {
+     const demoComposeFiles = ["/root/nextcloud.yml","/root/postgres.yml","/root/redis.yml","/root/wordpress.yml"];
      const key = "Compose Files";
 
      if (!isValidKey(key)) {
@@ -841,60 +846,66 @@ function promptComposeFiles() {
           return;
      }
 
-     const recontainRulesFile=config.has("RecontainRulesFile") ? config.get("RecontainRulesFile") : scriptPath + defaultRulesFile;
-     const rules = require(recontainRulesFile);
+     let sortedComposeList = [];
+
+     if (!demoMode) {
+          const recontainRulesFile=config.has("RecontainRulesFile") ? config.get("RecontainRulesFile") : scriptPath + defaultRulesFile;
+          const rules = require(recontainRulesFile);
 	 
-     if (typeof rules !== "object") {
-          console.log(`ERROR! An error occurred getting the rule names in promptComposeFiles(). Rules is ${typeof rules}`);
-          runPreviousAction(key);
-          return;
-     }
+          if (typeof rules !== "object") {
+               console.log(`ERROR! An error occurred getting the rule names in promptComposeFiles(). Rules is ${typeof rules}`);
+               runPreviousAction(key);
+               return;
+          }
 
-     const defaultComposeFilePath = config.has("DefaultComposeDirectory") ? config.get("DefaultComposeDirectory") : "";
-     const ruleNames = Object.keys(rules);
-     const ruleComposeList = [];
+          const defaultComposeFilePath = config.has("DefaultComposeDirectory") ? config.get("DefaultComposeDirectory") : "";
+          const ruleNames = Object.keys(rules);
+          const ruleComposeList = [];
 
-     for (let i=0;i<ruleNames.length;i++) {
-          const ruleObj = rules[ruleNames[i]];
+          for (let i=0;i<ruleNames.length;i++) {
+               const ruleObj = rules[ruleNames[i]];
 
-          const fileName = ruleObj.Filename;
+               const fileName = ruleObj.Filename;
           
-          if (typeof fileName === "undefined") {
-               continue;
-          }
+               if (typeof fileName === "undefined") {
+                    continue;
+               }
 
-          let fullPath = "";
+               let fullPath = "";
 
-          if ( typeof ruleObj.ComposePath !== "undefined") {
-               fullPath = ruleObj.ComposePath + (!ruleObj.ComposePath.endsWith(delimiter) ? delimiter : "") + fileName;
-          } else if (defaultComposeFilePath !== "") { // TODO: This prevents compose files that happen to be in the current directory from geting picked up. Figure out if you want it to stay this way
-               fullPath = defaultComposeFilePath + (!defaultComposeFilePath.endsWith(delimiter) ? delimiter : "") + fileName;
-          }
+               if (typeof ruleObj.ComposePath !== "undefined") {
+                    fullPath = ruleObj.ComposePath + (!ruleObj.ComposePath.endsWith(delimiter) ? delimiter : "") + fileName;
+               } else if (defaultComposeFilePath !== "") { // TODO: This prevents compose files that happen to be in the current directory from geting picked up. Figure out if you want it to stay this way
+                    fullPath = defaultComposeFilePath + (!defaultComposeFilePath.endsWith(delimiter) ? delimiter : "") + fileName;
+               }
 
-          if (fullPath !== "") {
-               ruleComposeList.push(fullPath);
-          }
+               if (fullPath !== "") {
+                    ruleComposeList.push(fullPath);
+               }
 
-          if (typeof ruleObj.AdditionalComposeFiles !== "undefined") {
-               for (let i=0;i<ruleObj.AdditionalComposeFiles.length;i++) {
-                    ruleComposeList.push(ruleObj.AdditionalComposeFiles[i]);
+               if (typeof ruleObj.AdditionalComposeFiles !== "undefined") {
+                    for (let i=0;i<ruleObj.AdditionalComposeFiles.length;i++) {
+                         ruleComposeList.push(ruleObj.AdditionalComposeFiles[i]);
+                    }
                }
           }
-     }
 
-     const defaultComposeList = config.has("DefaultComposeDirectory") ? findByExt(config.get("DefaultComposeDirectory"),'yml') : [];
+          const defaultComposeList = config.has("DefaultComposeDirectory") ? findByExt(config.get("DefaultComposeDirectory"),'yml') : [];
      
-     const unfilteredComposeList = ruleComposeList.concat(defaultComposeList);
+          const unfilteredComposeList = ruleComposeList.concat(defaultComposeList);
 
-     if (unfilteredComposeList.length === 0) {
-          console.log(`ERROR! No compose files were found!`);
-          runPreviousAction(key);
-          return;
-     }
+          if (unfilteredComposeList.length === 0) {
+               console.log(`ERROR! No compose files were found!`);
+               runPreviousAction(key);
+               return;
+          }
      
-     const filteredComposeList = unfilteredComposeList.filter((value,index) => unfilteredComposeList.indexOf(value) === index);
+          const filteredComposeList = unfilteredComposeList.filter((value,index) => unfilteredComposeList.indexOf(value) === index);
 
-     const sortedComposeList = filteredComposeList.sort(sortMethod);
+          sortedComposeList = filteredComposeList.sort(sortMethod);
+     } else {
+          sortedComposeList = demoComposeFiles;
+     }
 
      inquirer.prompt([
           {
@@ -913,7 +924,28 @@ function promptComposeFiles() {
      });
 }
 
+function pruneNetworks() {
+     const key = "PruneNetworksAction";
+
+     if (!isValidKey(key)) {
+          console.log(`ERROR! The key ${key} in pruneNetworks() is not valid`);
+          promptMainMenu();
+          return;
+     }
+
+     const pruneNetworksResult = executeShellCommand(executable,[ "network", "prune", "-f"]);
+
+     if (pruneNetworksResult[0] === "ERROR") {
+          console.log(pruneNetworksResult[1]);
+          runPreviousAction(key);
+          return;
+     }
+
+     runNextAction(key);
+}
+
 function promptRecontainRules() {
+     const demoRecontainRules = ["Adminer", "MySQL", "Nextcloud", "PostGres", "Redis", "WordPress"];
      const runRulesKey = "Recontain Rules";
      const runKey = "Run Recontain Rule";
 	  
@@ -938,20 +970,26 @@ function promptRecontainRules() {
      
      const recontainRulesFile=config.has("RecontainRulesFile") ? config.get("RecontainRulesFile") : scriptPath + defaultRulesFile;
 
-     const rules = require(recontainRulesFile);
-	 
-     if (typeof rules !== "object") {
-          console.log(`ERROR! An error occurred getting the rule names in promptRecontainRules(). Rules is ${typeof rules}`);
-          runPreviousAction(runRulesKey);
-          return;
-     }
+     let ruleNames = [];
 
-     const ruleNames = Object.keys(rules);
+     if (!demoMode) {
+          const rules = require(recontainRulesFile);
+	 
+          if (typeof rules !== "object") {
+               console.log(`ERROR! An error occurred getting the rule names in promptRecontainRules(). Rules is ${typeof rules}`);
+               runPreviousAction(runRulesKey);
+               return;
+          }
+
+          ruleNames = Object.keys(rules);
  
-     if (ruleNames.length === 0) {
-          console.log("ERROR! An error occurred getting the rule names in promptRecontainRules(). The ruleNames array is empty");
-	     runPreviousAction(runRulesKey);
-	     return;
+          if (ruleNames.length === 0) {
+               console.log("ERROR! An error occurred getting the rule names in promptRecontainRules(). The ruleNames array is empty");
+	       runPreviousAction(runRulesKey);
+	       return;
+          }
+     } else {
+          ruleNames = demoRecontainRules;
      }
 
      inquirer.prompt([
@@ -1284,7 +1322,7 @@ async function promptSelectImage(imageAction) {
      ])
      .then((answers) => {
           if (answers.image === goBack) {
-               runPreviousAction(key);
+               runPreviousAction(imageAction);
                return;
           } else {
                const nextAction = getMapProperty(imageAction,"NextAction");
@@ -1421,6 +1459,7 @@ function promptSelectImageAction() {
 }
 
 function promptSelectNetwork(networkAction) {
+     const demoNetworks = ["bridge","host","none","MyNetwork"];
      const key = "Select Network";
 
      if (!isValidKey(key)) {
@@ -1437,7 +1476,7 @@ function promptSelectNetwork(networkAction) {
           return;
      }
 
-     const networks = getNetworks();
+     const networks = !demoMode ? getNetworks() : demoNetworks;
 
      if (networks === null) {
           console.log("No networks found!");
@@ -1598,6 +1637,8 @@ function promptSelectNetworkAction() {
 }
 
 function promptSelectVolume(volumeAction) {
+     const demoVolumes = ["a2f4b1e983c0d7a8b4901c2f3d5e6f7210c3b4a5f6e7d8c9a0b1c2d3e4f5a6","9d8e7f6a5b4c3d2e1f0a2b3c4d5e6f79876543210abcdef0123456789abcdef","c9a8b7d6e5f4a3b2c1d0e7f8c2a1b3d4e5f6a7b8c9d0e1f2a3456789abcdef","1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1","f0e1d2c3b4a5f6e7d8c9a0b1c2d3e4f5a6789abcdef0123456789abcdef0"];
+
      const key = "Select Volume";
 
      if (!isValidKey(key)) {
@@ -1614,7 +1655,7 @@ function promptSelectVolume(volumeAction) {
           return;
      }
 
-     const volumes = getVolumes();
+     const volumes = !demoMode ? getVolumes() : demoVolumes;
 
      if (volumes === null) {
           console.log("No volumes found!");
@@ -1782,46 +1823,6 @@ function promptSelectVolumeAction() {
      });
 }
 
-function pruneNetworks() {
-     const key = "PruneNetworksAction";
-
-     if (!isValidKey(key)) {
-          console.log(`ERROR! The key ${key} in pruneNetworks() is not valid`);
-          promptMainMenu();
-          return;
-     }
-
-     const pruneNetworksResult = executeShellCommand(executable,[ "network", "prune", "-f"]);
-
-     if (pruneNetworksResult[0] === "ERROR") {
-          console.log(pruneNetworksResult[1]);
-          runPreviousAction(key);
-          return;
-     }
-
-     runNextAction(key);
-}
-
-function pruneVolumes() {
-     const key = "PruneVolumesAction";
-
-     if (!isValidKey(key)) {
-          console.log(`ERROR! The key ${key} in pruneVolumes() is not valid`);
-          promptMainMenu();
-          return;
-     }
-
-     const pruneVolumesResult = executeShellCommand(executable,[ "volume", "prune", "-f"]);
-
-     if (pruneVolumesResult[0] === "ERROR") {
-          console.log(pruneVolumesResult[1]);
-          runPreviousAction(key);
-          return;
-     }
-
-     runNextAction(key);
-}
-
 function pruneSystem(key) {
      if (!isValidKey(key)) {
           console.log(`ERROR! The key ${key} passed to pruneSystem() is not valid`);
@@ -1872,6 +1873,26 @@ function pruneSystemPrompt() {
      }
    
      promptConfirm(promptMessage, promptOnConfirm, key, promptOnDeny);
+}
+
+function pruneVolumes() {
+     const key = "PruneVolumesAction";
+
+     if (!isValidKey(key)) {
+          console.log(`ERROR! The key ${key} in pruneVolumes() is not valid`);
+          promptMainMenu();
+          return;
+     }
+
+     const pruneVolumesResult = executeShellCommand(executable,[ "volume", "prune", "-f"]);
+
+     if (pruneVolumesResult[0] === "ERROR") {
+          console.log(pruneVolumesResult[1]);
+          runPreviousAction(key);
+          return;
+     }
+
+     runNextAction(key);
 }
 
 function removeNetwork(networkName) {

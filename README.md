@@ -21,8 +21,8 @@ You can also run a recontain rule from the command line and skip the interactive
 ![Compose Files](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/ComposeFiles.png?raw=true)
 ![Images](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Images.png?raw=true)
 ![Networks](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Networks.png?raw=true)
-![Prune](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Prune.png?raw=true)
 ![Recontain Rules](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/RecontainRules.png?raw=true)
+![Prune](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Prune.png?raw=true)
 ![Volumes](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Volumes.png?raw=true)
 
 # Requirements

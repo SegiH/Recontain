@@ -9,11 +9,21 @@ Recontain has an interactive menu that lets you perform the following actions:
 1. Manage Images - Inspect an image, Prune unused images, Remove an image, Update an image.
 1. Manage Compose Files - All compose files specified in the Recontain rules file along with all compose ifles in the DefaultComposeDirectory (if provided).
 1. Manage Networks - Inspect a network, prune unused networks and remove a network
-1. Nabage volumes - Create a volume
+1. Manage volumes - Create a volume
 1. Run Recontain rule - Run a recontain rule to recreate multiple containers at once.
 1. Run system prune - Runs docker/podman system prune -a to remove all unused containers, images, networks and volumes.
 
 You can also run a recontain rule from the command line and skip the interactive menu entirely.
+
+# Screenshots
+![Main Menu](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/MainMenu.png?raw=true)
+![Containers](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Containers.png?raw=true)
+![Compose Files](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/ComposeFiles.png?raw=true)
+![Images](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Images.png?raw=true)
+![Networks](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Networks.png?raw=true)
+![Prune](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Prune.png?raw=true)
+![Recontain Rules](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/RecontainRules.png?raw=true)
+![Volumes](https://raw.githubusercontent.com/SegiH/Recontain/main/Screenshots/Volumes.png?raw=true)
 
 # Requirements
 In order for Recontain to work you must have docker or podman installed. If you plan on creating Recontain rules, you also need to have docker-compose/podman-compose installed.

@@ -1,6 +1,7 @@
 {
      "RecontainRulesFile": "",
      "DefaultComposeDirectory": "",
+     "ComposeFileTemplate": "./composeTemplate.yml",
      "Silent": true,
      "UsePodman": false
 }

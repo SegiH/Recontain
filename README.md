@@ -6,6 +6,14 @@ See the instructions below on how to compile Recontain.
 Recontain has an interactive menu that lets you perform the following actions:
 
 1. Manage Containers - Select a docker container and choose to start, stop, restart or delete the container.
+1. Generate Compose Files - Generate docker compose file using a template. The template can have the following placeholders:
+    a. NETWORKNAME - Network name
+    b. SERVICENAME - Service name in lower case
+    c. CONTAINERNAME - Container name
+    d. IMAGENAME - Image name
+    d. ENVIRONMENTVARS - Environment variables
+    e. VOLUMES - Volumes
+    f. PORTS - Ports
 1. Manage Images - Inspect an image, Prune unused images, Remove an image, Update an image.
 1. Manage Compose Files - All compose files specified in the Recontain rules file along with all compose ifles in the DefaultComposeDirectory (if provided).
 1. Manage Networks - Inspect a network, prune unused networks and remove a network

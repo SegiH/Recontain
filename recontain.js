@@ -18,7 +18,25 @@ const usePodman = (config.has("UsePodman") && config.get("UsePodman") === true ?
 const executable = !usePodman ? "docker" : "podman";
 const goBack = "Go Back";
 
+let composeFile = '';
+
 const readline = require('readline-sync');
+
+const composeFileTemplateFile = config.has("ComposeFileTemplate") ? config.get("ComposeFileTemplate") : "";
+
+//const COL1_SPACES = 4
+//const COL2_SPACES = 9
+const COL3_SPACES = 13
+
+const generateComposeFileTemplate = {
+     networkName: string = "SegiNet",
+     serviceName: string = "test",
+     containerName: string = "Test",
+     imageName: string = "TestImage",
+     ports: string = [[80, 80], [81, 81]],
+     volumes: string = [["/root/a", "/root/b"]],
+     environmentVars: string = [["TESTVAR", "testvalue"]]
+}
 
 const recontainMenuMap = {
      "Main Menu": {
@@ -288,6 +306,93 @@ const recontainMenuMap = {
                          "PreviousAction": "Volumes",
                     }
                },
+               "Generate compose file": {
+                    "Method": generateComposeFile,
+                    "PreviousAction": "Main Menu",
+                    "MenuOptions": {
+                         "Preview Compose file": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "PreviewComposeFileAction"
+                         },
+                         "Set Network Name": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "SetNetworkNameAction"
+                         },
+                         "Set Service Name": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "SetServiceNameAction"
+                         },
+                         "Set Container Name": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "SetContainerNameAction"
+                         },
+                         "Set Image Name": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "SetImageNameAction"
+                         },
+                         "Manage port mappings": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "ManagePortMappingsAction"
+                         },
+                         "Manage Volumes": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "ManageVolumesAction"
+                         },
+                         "Manage Environment Variables": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "ManageEnvironmentVariablesAction"
+                         },
+                         "Save Compose file": {
+                              "PreviousAction": "Generate compose file",
+                              "NextAction": "SaveComposeFileAction"
+                         }
+                    },
+                    "PreviewComposeFileAction": {
+                         "Method": previewComposeFileAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "SetNetworkNameAction": {
+                         "Method": setNetworkNameAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "SetServiceNameAction": {
+                         "Method": setServiceNameAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "SetContainerNameAction": {
+                         "Method": setContainerNameAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "SetImageNameAction": {
+                         "Method": setImageNameAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "ManagePortMappingsAction": {
+                         "Method": managePortMappingsAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "ManageVolumesAction": {
+                         "Method": manageVolumesAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "ManageEnvironmentVariablesAction": {
+                         "Method": manageEnvironmentVariablesAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+                    "SaveComposeFileAction": {
+                         "Method": saveComposeFileAction,
+                         "NextAction": "Generate compose file",
+                         "PreviousAction": "Generate compose file"
+                    },
+               },
                "Exit": {
                     "Method": exit
                }
@@ -518,6 +623,81 @@ function findByExt(base, ext, files, result) {
      return result
 }
 
+function generateComposeFile() {
+     const key = "Generate compose file";
+
+     if (!isValidKey(key)) {
+          console.log(`ERROR! The key ${key} in generateComposeFile() is not valid`);
+          promptMainMenu();
+          return;
+     }
+
+     if (composeFileTemplateFile === "") {
+          console.log(`ERROR! An error occurred getting the path to the Compose File Template rule file. Please set ComposeFileTemplate in the config file`);
+          runPreviousAction(key);
+          return;
+     }
+
+     if (fs.existsSync(!composeFileTemplateFile)) {
+          console.log(`ERROR! An error occurred locating the path to the Compose File Template. Please make sure this file exists`);
+          runPreviousAction(key);
+          return;
+     }
+
+     const generateComposeFileActionsArray = getMapProperty(key, "MenuOptions");
+
+     if (typeof generateComposeFileActionsArray !== "object") {
+          console.log("ERROR! generateComposeFileActionsArray is not valid in generateComposeFile()");
+          runPreviousAction(key);
+          return;
+     }
+
+     const generateComposeFileActions = Object.keys(generateComposeFileActionsArray);
+
+     if (generateComposeFileActions.length === 0) {
+          console.log("ERROR! generateComposeFileActions array is empty in generateComposeFile()");
+          runPreviousAction(key);
+          return;
+     }
+
+     inquirer.prompt([
+          {
+               type: 'list',
+               name: 'generateComposeFileAction',
+               message: 'Please select the generate compose file action',
+               choices: ['Go Back', ...generateComposeFileActions],
+          },
+     ]).then((answers) => {
+          if (answers.generateComposeFileAction === goBack) {
+               runPreviousAction(key);
+               return;
+          }
+
+          const nextAction = getMapProperty(answers.generateComposeFileAction, "NextAction");
+          const nextMethod = getMapProperty(nextAction, "Method");
+
+          if (typeof nextAction !== "string") {
+               console.log(`ERROR! An error occurred in generateComposeFile(). The NextAction property for ${answers.generateComposeFileAction} is not a string. It is ${typeof nextAction}`);
+               runPreviousAction(key);
+               return;
+          }
+
+          if (typeof nextMethod !== "function") {
+               console.log(`ERROR! An error occurred in generateComposeFile(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod}`);
+               runPreviousAction(key);
+               return;
+          }
+
+          if (typeof nextMethod !== "function") {
+               console.log(`ERROR! An error occurred in generateComposeFile(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.generateComposeFileAction} was selected`);
+               runPreviousAction(key);
+               return;
+          }
+
+          nextMethod();
+     });
+}
+
 function getContainers() {
      const containerResult = executeShellCommand(executable, ["ps", "-a", "--format", "{{.Names}} ({{.Status}})"]);
 
@@ -532,6 +712,10 @@ function getContainers() {
      }
 
      const containerNames = containerResult[1];
+
+     if (containerNames.length === 0 || containerNames[0] === `,`) {
+          return [];
+     }
 
      let spl = containerNames.split(String.fromCharCode(10));
 
@@ -598,6 +782,10 @@ function getImages() {
      }
 
      const imageNames = imageResult[1];
+
+     if (imageNames.length === 0 || imageNames[0] === `,`) {
+          return [];
+     }
 
      let spl = imageNames.split(String.fromCharCode(10));
 
@@ -774,6 +962,158 @@ function isValidKey(key) {
      return typeof keyValidationResult !== "undefined";
 }
 
+function manageEnvironmentVariablesAction() {
+     const key = "ManageEnvironmentVariablesAction";
+
+     let envVarName = null;
+     let envVarValue = null;
+
+     while (true) {
+          envVarName = readline.question("Enter the environment variable name or press enter to exit: ");
+
+          if (envVarName === '') {
+               break;
+          }
+
+          envVarValue = readline.question("Enter the environment variable value or press enter to exit: ");
+
+          if (envVarValue === '') {
+               break;
+          }
+
+          generateComposeFileTemplate.environmentVars.push([envVarName, envVarValue]);
+     }
+
+     runPreviousAction(key);
+}
+
+function managePortMappingsAction() {
+     const key = "ManagePortMappingsAction";
+
+     let hostPortNum = null;
+     let containerPortNum = null;
+
+     while (true) {
+          hostPortNum = readline.question("Enter the host port number or press enter to exit: ");
+
+          if (hostPortNum === '') {
+               break;
+          }
+
+          containerPortNum = readline.question("Enter the container port number or press enter to exit: ");
+
+          if (containerPortNum === '') {
+               break;
+          }
+
+          generateComposeFileTemplate.ports.push([hostPortNum, containerPortNum]);
+     }
+
+     runPreviousAction(key);
+}
+
+function manageVolumesAction() {
+     const key = "ManageVolumesAction";
+
+     let hostVolumePath = null;
+     let containerVolumePath = null;
+
+     while (true) {
+          hostVolumePath = readline.question("Enter the host volume path or press enter to exit: ");
+
+          if (hostVolumePath === '') {
+               break;
+          }
+
+          containerVolumePath = readline.question("Enter the volume path or press enter to exit: ");
+
+          if (containerVolumePath === '') {
+               break;
+          }
+
+          generateComposeFileTemplate.volumes.push([hostVolumePath, containerVolumePath]);
+     }
+
+     runPreviousAction(key);
+}
+
+function previewComposeFileAction() {
+     const key = "PreviewComposeFileAction";
+
+     composeFile = fs.readFileSync(composeFileTemplateFile, 'utf8');
+
+     if (generateComposeFileTemplate.networkName !== "") {
+          composeFile = composeFile.replaceAll("NETWORKNAME", generateComposeFileTemplate.networkName);
+     }
+
+     if (generateComposeFileTemplate.serviceName !== "") {
+          composeFile = composeFile.replaceAll("SERVICENAME", generateComposeFileTemplate.serviceName);
+     }
+
+     if (generateComposeFileTemplate.containerName !== "") {
+          composeFile = composeFile.replaceAll("CONTAINERNAME", generateComposeFileTemplate.containerName);
+     }
+
+     if (generateComposeFileTemplate.imageName !== "") {
+          composeFile = composeFile.replaceAll("IMAGENAME", generateComposeFileTemplate.imageName);
+     }
+
+     // Environment variables
+     if (generateComposeFileTemplate.environmentVars.length === 0) {
+          composeFile = composeFile.replaceAll("ENVIRONMENTVARS", "");
+     } else {
+          let environmentStr = "environment:\n";
+
+          for (let i = 0; i < generateComposeFileTemplate.environmentVars.length; i++) {
+               environmentStr += " ".repeat(COL3_SPACES) + `- ${generateComposeFileTemplate.environmentVars[i][0]}=${generateComposeFileTemplate.environmentVars[i][1]}`;
+
+               if (i<generateComposeFileTemplate.environmentVars.length-1) {
+                    environmentStr += "\n";
+               }
+          }
+
+          composeFile = composeFile.replaceAll("ENVIRONMENTVARS", environmentStr);
+     }
+
+     // Volumes
+     if (generateComposeFileTemplate.volumes.length === 0) {
+          composeFile = composeFile.replaceAll("VOLUMES", "");
+     } else {
+          let volumesStr = "volumes:\n";
+
+          for (let i = 0; i < generateComposeFileTemplate.volumes.length; i++) {
+               volumesStr += " ".repeat(COL3_SPACES) + `- ${generateComposeFileTemplate.volumes[i][0]}:${generateComposeFileTemplate.volumes[i][1]}`;
+
+               if (i<generateComposeFileTemplate.volumes.length-1) {
+                    volumesStr += "\n";
+               }
+          }
+
+          composeFile = composeFile.replaceAll("VOLUMES", volumesStr);
+     }
+
+     // Ports
+     if (generateComposeFileTemplate.ports.length === 0) {
+          composeFile = composeFile.replaceAll("PORTS", "");
+     } else {
+          let portsStr = "ports:\n";
+
+          for (let i = 0; i < generateComposeFileTemplate.ports.length; i++) {
+               portsStr += " ".repeat(COL3_SPACES) + `- ${generateComposeFileTemplate.ports[i][0]}:${generateComposeFileTemplate.ports[i][1]}`;
+
+               if (i<generateComposeFileTemplate.ports.length-1) {
+                    portsStr += "\n";
+               }
+          }
+
+          composeFile = composeFile.replaceAll("PORTS", portsStr);
+     }
+
+     console.log(composeFile);
+
+     runNextAction(key);
+}
+
 function promptConfirm(confirmMsg, onConfirm, onConfirmParameter, onDeny, onDenyParameter) {
      inquirer.prompt([
           {
@@ -781,68 +1121,25 @@ function promptConfirm(confirmMsg, onConfirm, onConfirmParameter, onDeny, onDeny
                name: 'confirm',
                message: confirmMsg,
           },
-     ])
-          .then((answer) => {
-               if (answer.confirm === true) {
-                    if (typeof onConfirm === "function") {
-                         onConfirm(onConfirmParameter, onDeny);
-                    } else {
-                         console.log(`ERROR! onConfirm is not a function in promptConfirm() when the prompt message is ${confirmMsg} and onConfirm = ${typeof onConfirm}`);
-                         runPreviousAction(key);
-                         return;
-                    }
+     ]).then((answer) => {
+          if (answer.confirm === true) {
+               if (typeof onConfirm === "function") {
+                    onConfirm(onConfirmParameter, onDeny);
                } else {
-                    if (typeof onDeny === "function") {
-                         onDeny(onDenyParameter);
-                    } else {
-                         console.log(`ERROR! onDeny is not a function in promptConfirm() when the prompt message is ${confirmMsg} and onDeny = ${typeof onDeny}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-               }
-          });
-}
-
-function promptMainMenu() {
-     const choicesArray = getMapProperty("Main Menu", "MenuOptions");
-
-     if (typeof choicesArray === "undefined") {
-          console.log("ERROR! An error occurred getting the menu items in promptMainMenu(). choicesArray is not defined. Exiting...");
-          exit(1);
-     }
-
-     const choices = Object.keys(choicesArray);
-
-     if (choices.length === 0) {
-          console.log("ERROR! An error occurred getting the menu items in promptMainMenu(). Exiting...");
-          exit(1);
-     }
-
-     inquirer.prompt([
-          {
-               type: 'list',
-               name: 'action',
-               message: 'Please select an action',
-               choices: choices
-          },
-     ])
-          .then((answers) => {
-               if (typeof choicesArray[answers.action] === "undefined") {
-                    console.log("ERROR! An error occurred determining the next step in promptMainMenu()");
-                    promptMainMenu();
+                    console.log(`ERROR! onConfirm is not a function in promptConfirm() when the prompt message is ${confirmMsg} and onConfirm = ${typeof onConfirm}`);
+                    runPreviousAction(key);
                     return;
                }
-
-               const nextMenuOptionMethod = choicesArray[answers.action]["Method"];
-
-               if (typeof nextMenuOptionMethod !== "function") {
-                    console.log(`ERROR! nextMenuOptionMethod is not a function in promptMainMenu() when the answer is ${answers.action}. It is ${typeof nextMenuOptionMethod}`);
-                    promptMainMenu();
+          } else {
+               if (typeof onDeny === "function") {
+                    onDeny(onDenyParameter);
+               } else {
+                    console.log(`ERROR! onDeny is not a function in promptConfirm() when the prompt message is ${confirmMsg} and onDeny = ${typeof onDeny}`);
+                    runPreviousAction(key);
                     return;
                }
-
-               nextMenuOptionMethod();
-          });
+          }
+     });
 }
 
 function promptComposeFiles() {
@@ -862,6 +1159,12 @@ function promptComposeFiles() {
 
           if (recontainRulesFile === "") {
                console.log(`ERROR! An error occurred getting the path to the Recontain rule file. Please set RecontainRulesFile in the config file`);
+               runPreviousAction(key);
+               return;
+          }
+
+          if (!fs.existsSync(!recontainRulesFile)) {
+               console.log(`ERROR! An error occurred locating the Recontain rule file at ${recontainRulesFile}. Please make sure this file exists`);
                runPreviousAction(key);
                return;
           }
@@ -891,7 +1194,7 @@ function promptComposeFiles() {
 
                if (typeof ruleObj.ComposePath !== "undefined") {
                     fullPath = ruleObj.ComposePath + (!ruleObj.ComposePath.endsWith(delimiter) ? delimiter : "") + fileName;
-               } else if (defaultComposeFilePath !== "") { // TODO: This prevents compose files that happen to be in the current directory from geting picked up. Figure out if you want it to stay this way
+               } else if (defaultComposeFilePath !== "") { // This prevents compose files that happen to be in the current directory from geting picked up.Figure out if you want it to stay this way
                     fullPath = defaultComposeFilePath + (!defaultComposeFilePath.endsWith(delimiter) ? delimiter : "") + fileName;
                }
 
@@ -930,34 +1233,54 @@ function promptComposeFiles() {
                message: 'Please select the compose file',
                choices: [goBack, ...sortedComposeList]
           },
-     ])
-          .then((answers) => {
-               if (answers.compose === goBack) {
-                    runPreviousAction(key);
-               } else {
-                    runNextAction(key, [answers.compose]);
-               }
-          });
+     ]).then((answers) => {
+          if (answers.compose === goBack) {
+               runPreviousAction(key);
+          } else {
+               runNextAction(key, [answers.compose]);
+          }
+     });
 }
 
-function pruneNetworks() {
-     const key = "PruneNetworksAction";
+function promptMainMenu() {
+     const choicesArray = getMapProperty("Main Menu", "MenuOptions");
 
-     if (!isValidKey(key)) {
-          console.log(`ERROR! The key ${key} in pruneNetworks() is not valid`);
-          promptMainMenu();
-          return;
+     if (typeof choicesArray === "undefined") {
+          console.log("ERROR! An error occurred getting the menu items in promptMainMenu(). choicesArray is not defined. Exiting...");
+          exit(1);
      }
 
-     const pruneNetworksResult = executeShellCommand(executable, ["network", "prune", "-f"]);
+     const choices = Object.keys(choicesArray);
 
-     if (pruneNetworksResult[0] === "ERROR") {
-          console.log(pruneNetworksResult[1]);
-          runPreviousAction(key);
-          return;
+     if (choices.length === 0) {
+          console.log("ERROR! An error occurred getting the menu items in promptMainMenu(). Exiting...");
+          exit(1);
      }
 
-     runNextAction(key);
+     inquirer.prompt([
+          {
+               type: 'list',
+               name: 'action',
+               message: 'Please select an action',
+               choices: choices
+          },
+     ]).then((answers) => {
+          if (typeof choicesArray[answers.action] === "undefined") {
+               console.log("ERROR! An error occurred determining the next step in promptMainMenu()");
+               promptMainMenu();
+               return;
+          }
+
+          const nextMenuOptionMethod = choicesArray[answers.action]["Method"];
+
+          if (typeof nextMenuOptionMethod !== "function") {
+               console.log(`ERROR! nextMenuOptionMethod is not a function in promptMainMenu() when the answer is ${answers.action}. It is ${typeof nextMenuOptionMethod}`);
+               promptMainMenu();
+               return;
+          }
+
+          nextMenuOptionMethod();
+     });
 }
 
 function promptRecontainRules() {
@@ -1015,41 +1338,40 @@ function promptRecontainRules() {
                message: 'Please select',
                choices: [goBack, ...ruleNames]
           },
-     ])
-          .then((answers) => {
-               if (answers.rule === goBack) {
-                    runPreviousAction(runRulesKey);
-               } else {
-                    if (!recontainRulesValidated) {
-                         const recontainRulesValid = validateRecontainRules();
+     ]).then((answers) => {
+          if (answers.rule === goBack) {
+               runPreviousAction(runRulesKey);
+          } else {
+               if (!recontainRulesValidated) {
+                    const recontainRulesValid = validateRecontainRules();
 
-                         if (!recontainRulesValid) {
-                              console.log("ERROR! An error occurred validating the Recontain rules");
-                              runPreviousAction(key);
-                         }
-                    }
-
-                    const nextMethod = getMapProperty(runKey, "Method");
-
-                    if (typeof nextMethod === "function") {
-                         const rules = require(recontainRulesFile);
-
-                         const ruleObj = rules[answers.rule];
-
-                         if (typeof ruleObj.Prompt !== "undefined" && ruleObj.Prompt === true) {
-                              promptConfirm("Are you sure that you want to run this rule ?", runRecontainRule, answers.rule, promptRecontainRules);
-                              //runNextAction(runKey);
-                         } else {
-                              nextMethod(answers.rule);
-                         }
-                         //nextMethod(answers.rule);
-                    } else {
-                         console.log(`ERROR! An error occurred in promptRecontainRules(). The Method property for ${runKey} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(runRulesKey);
-                         return;
+                    if (!recontainRulesValid) {
+                         console.log("ERROR! An error occurred validating the Recontain rules");
+                         runPreviousAction(key);
                     }
                }
-          });
+
+               const nextMethod = getMapProperty(runKey, "Method");
+
+               if (typeof nextMethod === "function") {
+                    const rules = require(recontainRulesFile);
+
+                    const ruleObj = rules[answers.rule];
+
+                    if (typeof ruleObj.Prompt !== "undefined" && ruleObj.Prompt === true) {
+                         promptConfirm("Are you sure that you want to run this rule ?", runRecontainRule, answers.rule, promptRecontainRules);
+                         //runNextAction(runKey);
+                    } else {
+                         nextMethod(answers.rule);
+                    }
+                    //nextMethod(answers.rule);
+               } else {
+                    console.log(`ERROR! An error occurred in promptRecontainRules(). The Method property for ${runKey} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(runRulesKey);
+                    return;
+               }
+          }
+     });
 }
 
 function promptSelectComposeFileAction(composeFile) {
@@ -1094,31 +1416,30 @@ function promptSelectComposeFileAction(composeFile) {
                message: 'Please select the compose file action',
                choices: [goBack, ...composeFileActions],
           },
-     ])
-          .then((answers) => {
-               if (answers.composeAction === goBack) {
+     ]).then((answers) => {
+          if (answers.composeAction === goBack) {
+               runPreviousAction(key);
+               return;
+          } else {
+               const nextActionProperty = getMapProperty(answers.composeAction, "NextAction");
+
+               if (typeof nextActionProperty === "undefined") {
+                    console.log(`ERROR! nextActionProperty is not defined in promptSelectComposeAction() when the key is ${key}`);
                     runPreviousAction(key);
                     return;
-               } else {
-                    const nextActionProperty = getMapProperty(answers.composeAction, "NextAction");
-
-                    if (typeof nextActionProperty === "undefined") {
-                         console.log(`ERROR! nextActionProperty is not defined in promptSelectComposeAction() when the key is ${key}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const nextActionMethod = getMapProperty(nextActionProperty, "Method");
-
-                    if (typeof nextActionMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectComposeFileAction(). The Method property for ${nextActionProperty} is not a function. It is ${typeof nextMethod} when the option ${answers.composeAction} was selected`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextActionMethod(composeFile);
                }
-          });
+
+               const nextActionMethod = getMapProperty(nextActionProperty, "Method");
+
+               if (typeof nextActionMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectComposeFileAction(). The Method property for ${nextActionProperty} is not a function. It is ${typeof nextMethod} when the option ${answers.composeAction} was selected`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               nextActionMethod(composeFile);
+          }
+     });
 }
 
 async function promptSelectContainer() {
@@ -1145,32 +1466,31 @@ async function promptSelectContainer() {
                message: 'Please select the container',
                choices: [goBack, ...containers]
           },
-     ])
-          .then((answers) => {
-               if (answers.container === goBack) {
+     ]).then((answers) => {
+          if (answers.container === goBack) {
+               runPreviousAction(key);
+          } else {
+               // Since the status is shown with the container name, separate the status string from the container name
+               const containerSplit = answers.container.split(" ");
+
+               if (containerSplit.length === 0) {
+                    console.log(`ERROR! An error occurred in promptSelectContainer() getting the container name.`);
                     runPreviousAction(key);
-               } else {
-                    // Since the status is shown with the container name, separate the status string from the container name
-                    const containerSplit = answers.container.split(" ");
-
-                    if (containerSplit.length === 0) {
-                         console.log(`ERROR! An error occurred in promptSelectContainer() getting the container name.`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const containerName = containerSplit[0];
-                    const containerStatus = containerSplit[1].replace("(", "").replace(")", "");
-
-                    if (containerName === null || containerName === "" || containerStatus === null || containerStatus === "") {
-                         console.log("ERROR! An error occurred in promptSelectContainer() splitting the container name and status");
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    runNextAction(key, [containerName, containerStatus]);
+                    return;
                }
-          });
+
+               const containerName = containerSplit[0];
+               const containerStatus = containerSplit[1].replace("(", "").replace(")", "");
+
+               if (containerName === null || containerName === "" || containerStatus === null || containerStatus === "") {
+                    console.log("ERROR! An error occurred in promptSelectContainer() splitting the container name and status");
+                    runPreviousAction(key);
+                    return;
+               }
+
+               runNextAction(key, [containerName, containerStatus]);
+          }
+     });
 }
 
 function promptSelectContainerAction(containerName, containerStatus) {
@@ -1230,84 +1550,83 @@ function promptSelectContainerAction(containerName, containerStatus) {
                message: 'Please select the container action',
                choices: [goBack, ...containerActions],
           },
-     ])
-          .then((answers) => {
-               if (answers.containerAction === goBack) {
+     ]).then((answers) => {
+          if (answers.containerAction === goBack) {
+               runPreviousAction(key);
+               return;
+          } else {
+               const nextAction = containerActionsArray[answers.containerAction]["NextAction"];
+
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! nextAction is not valid in promptSelectContainerAction() when the option ${answers.containerAction} was selected. It is ${typeof nextAction}`);
+                    runPreviousAction(answers.containerAction);
+                    return;
+               }
+
+               const nextMethod = getMapProperty(nextAction, "Method");
+
+               const actionCommand = containerActionsArray[answers.containerAction]["ActionCommand"];
+               const actionCommandPastTense = containerActionsArray[answers.containerAction]["ActionCommandPastTense"];
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectContainerAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.containerAction} was selected`);
                     runPreviousAction(key);
                     return;
-               } else {
-                    const nextAction = containerActionsArray[answers.containerAction]["NextAction"];
+               }
 
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! nextAction is not valid in promptSelectContainerAction() when the option ${answers.containerAction} was selected. It is ${typeof nextAction}`);
+               if (typeof actionCommand !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectContainerAction(). The ActionCommand property for ${nextAction} is not a function. It is ${typeof actionCommand} when the option ${answers.containerAction} was selected`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof actionCommandPastTense !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectContainerAction(). The ActionCommandPastTense property for ${nextAction} is not a function. It is ${typeof actionCommandPastTense} when the option ${answers.containerAction} was selected`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (answers.containerAction !== deleteContainerKey) {
+                    if (actionCommand === "start" && containerStatus === "Up") {
+                         console.log(`ERROR! The container ${containerName} is already running!`);
+                         runPreviousAction(answers.containerAction);
+                         return;
+                    } else if (actionCommand === "stop" && containerStatus === "Exited") {
+                         console.log(`ERROR! The container ${containerName} is already stopped!`);
                          runPreviousAction(answers.containerAction);
                          return;
                     }
 
-                    const nextMethod = getMapProperty(nextAction, "Method");
+                    nextMethod(containerName, actionCommand, actionCommandPastTense);
+               } else {
+                    let promptMessage = getMapProperty(nextAction, "PromptMessage");
+                    promptMessage = promptMessage.replace("<containerName>", containerName);
 
-                    const actionCommand = containerActionsArray[answers.containerAction]["ActionCommand"];
-                    const actionCommandPastTense = containerActionsArray[answers.containerAction]["ActionCommandPastTense"];
+                    const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
+                    const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
 
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.containerAction} was selected`);
+                    if (promptMessage.length === 0) {
+                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The promptMessage property for ${nextAction} is blank`);
                          runPreviousAction(key);
                          return;
                     }
 
-                    if (typeof actionCommand !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The ActionCommand property for ${nextAction} is not a function. It is ${typeof actionCommand} when the option ${answers.containerAction} was selected`);
+                    if (typeof promptOnConfirm !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
                          runPreviousAction(key);
                          return;
                     }
 
-                    if (typeof actionCommandPastTense !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The ActionCommandPastTense property for ${nextAction} is not a function. It is ${typeof actionCommandPastTense} when the option ${answers.containerAction} was selected`);
+                    if (typeof promptOnDeny !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectContainerAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
                          runPreviousAction(key);
                          return;
                     }
 
-                    if (answers.containerAction !== deleteContainerKey) {
-                         if (actionCommand === "start" && containerStatus === "Up") {
-                              console.log(`ERROR! The container ${containerName} is already running!`);
-                              runPreviousAction(answers.containerAction);
-                              return;
-                         } else if (actionCommand === "stop" && containerStatus === "Exited") {
-                              console.log(`ERROR! The container ${containerName} is already stopped!`);
-                              runPreviousAction(answers.containerAction);
-                              return;
-                         }
-
-                         nextMethod(containerName, actionCommand, actionCommandPastTense);
-                    } else {
-                         let promptMessage = getMapProperty(nextAction, "PromptMessage");
-                         promptMessage = promptMessage.replace("<containerName>", containerName);
-
-                         const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
-                         const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
-
-                         if (promptMessage.length === 0) {
-                              console.log(`ERROR! An error occurred in promptSelectContainerAction(). The promptMessage property for ${nextAction} is blank`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnConfirm !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectContainerAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnDeny !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectContainerAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         nextMethod(promptMessage, promptOnConfirm, containerName, promptOnDeny);
-                    }
+                    nextMethod(promptMessage, promptOnConfirm, containerName, promptOnDeny);
                }
-          });
+          }
+     });
 }
 
 async function promptSelectImage(imageAction) {
@@ -1335,51 +1654,50 @@ async function promptSelectImage(imageAction) {
                message: 'Please select the image',
                choices: [goBack, ...images]
           },
-     ])
-          .then((answers) => {
-               if (answers.image === goBack) {
-                    runPreviousAction(imageAction);
+     ]).then((answers) => {
+          if (answers.image === goBack) {
+               runPreviousAction(imageAction);
+               return;
+          } else {
+               const nextAction = getMapProperty(imageAction, "NextAction");
+               const nextImageAction = getMapProperty(nextAction, "NextAction");
+               const nextMethod = getMapProperty(nextImageAction, "Method");
+               const nextActionCommand = getMapProperty(nextImageAction, "ActionCommand");
+
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectImage(). The NextAction property for ${imageAction} is not a string. It is ${typeof nextAction}`);
+                    runPreviousAction(key);
                     return;
-               } else {
-                    const nextAction = getMapProperty(imageAction, "NextAction");
-                    const nextImageAction = getMapProperty(nextAction, "NextAction");
-                    const nextMethod = getMapProperty(nextImageAction, "Method");
-                    const nextActionCommand = getMapProperty(nextImageAction, "ActionCommand");
-
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectImage(). The NextAction property for ${imageAction} is not a string. It is ${typeof nextAction}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof nextImageAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectImage(). The NextAction property for ${nextAction} is not a string. It is ${typeof nextImageAction}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectImage(). The Method property for ${nextImageAction} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof nextActionCommand !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectImage(). The ActionCommand property for ${nextImageAction} is not a string. It is ${typeof nextActionCommand}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const shellCommandResult = nextMethod(executable, [nextActionCommand, answers.image]);
-
-                    if (shellCommandResult[0] === "ERROR") {
-                         console.log(shellCommandResult[1]);
-                         runPreviousAction(key);
-                    }
-
-                    runNextAction(nextImageAction);
                }
-          });
+
+               if (typeof nextImageAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectImage(). The NextAction property for ${nextAction} is not a string. It is ${typeof nextImageAction}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectImage(). The Method property for ${nextImageAction} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof nextActionCommand !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectImage(). The ActionCommand property for ${nextImageAction} is not a string. It is ${typeof nextActionCommand}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               const shellCommandResult = nextMethod(executable, [nextActionCommand, answers.image]);
+
+               if (shellCommandResult[0] === "ERROR") {
+                    console.log(shellCommandResult[1]);
+                    runPreviousAction(key);
+               }
+
+               runNextAction(nextImageAction);
+          }
+     });
 }
 
 function promptSelectImageAction() {
@@ -1422,56 +1740,55 @@ function promptSelectImageAction() {
                message: 'Please select the image action',
                choices: ['Go Back', ...selectImageActions],
           },
-     ])
-          .then((answers) => {
-               if (answers.imageAction === goBack) {
+     ]).then((answers) => {
+          if (answers.imageAction === goBack) {
+               runPreviousAction(key);
+               return;
+          }
+
+          if (answers.imageAction !== pruneKey) {
+               const nextAction = selectImageActionsArray[answers.imageAction]["NextAction"];
+
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectImageAction(). The NextAction property for ${answers.imageAction} is not a string. It is ${typeof nextAction}`);
                     runPreviousAction(key);
                     return;
                }
 
-               if (answers.imageAction !== pruneKey) {
-                    const nextAction = selectImageActionsArray[answers.imageAction]["NextAction"];
+               const nextMethod = getMapProperty(nextAction, "Method");
 
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectImageAction(). The NextAction property for ${answers.imageAction} is not a string. It is ${typeof nextAction}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const nextMethod = getMapProperty(nextAction, "Method");
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectImageAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextMethod(answers.imageAction);
-               } else {
-                    const nextAction = getMapProperty(answers.imageAction, "NextAction");
-                    const nextMethod = getMapProperty(nextAction, "Method");
-
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectImageAction(). The NextAction property for ${answers.imageAction} is not a string. It is ${typeof nextAction}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectImageAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const result = nextMethod(executable, ["image", "prune", "-a"]);
-
-                    if (result[0] === "ERROR") {
-                         console.log(result[1]);
-                    }
-
-                    runNextAction(nextAction);
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectImageAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(key);
+                    return;
                }
-          });
+
+               nextMethod(answers.imageAction);
+          } else {
+               const nextAction = getMapProperty(answers.imageAction, "NextAction");
+               const nextMethod = getMapProperty(nextAction, "Method");
+
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectImageAction(). The NextAction property for ${answers.imageAction} is not a string. It is ${typeof nextAction}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectImageAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               const result = nextMethod(executable, ["image", "prune", "-a"]);
+
+               if (result[0] === "ERROR") {
+                    console.log(result[1]);
+               }
+
+               runNextAction(nextAction);
+          }
+     });
 }
 
 function promptSelectNetwork(networkAction) {
@@ -1507,62 +1824,61 @@ function promptSelectNetwork(networkAction) {
                message: 'Please select the network',
                choices: [goBack, ...networks]
           },
-     ])
-          .then((answers) => {
-               if (answers.network === goBack) {
+     ]).then((answers) => {
+          if (answers.network === goBack) {
+               runPreviousAction(key);
+          } else if (networkAction === removeNetworkActionKey) {
+               const nextMethod = getMapProperty(networkAction, "Method");
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectNetwork(). The Method property for ${nextContainerAction} is not a function. It is ${typeof nextMethod} when the option ${answers.networkAction} was selected`);
                     runPreviousAction(key);
-               } else if (networkAction === removeNetworkActionKey) {
-                    const nextMethod = getMapProperty(networkAction, "Method");
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectNetwork(). The Method property for ${nextContainerAction} is not a function. It is ${typeof nextMethod} when the option ${answers.networkAction} was selected`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    let promptMessage = getMapProperty(networkAction, "PromptMessage");
-                    promptMessage = promptMessage.replace("<networkName>", answers.network);
-
-                    const promptOnConfirm = getMapProperty(networkAction, "PromptOnConfirm");
-                    const promptOnDeny = getMapProperty(networkAction, "PromptOnDeny");
-
-                    if (promptMessage.length === 0) {
-                         console.log(`ERROR! An error occurred in promptSelectNetwork(). The promptMessage property for ${networkAction} is blank`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof promptOnConfirm !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectNetwork(). The PromptOnConfirm property for ${networkAction} is not a function. It is ${typeof promptOnConfirm}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof promptOnDeny !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectNetwork(). The PromptOnDeny property for ${networkAction} is not a function. It is ${typeof promptOnDeny}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextMethod(promptMessage, promptOnConfirm, answers.network, promptOnDeny);
-               } else {
-                    if (typeof networkAction === "undefined") {
-                         console.log(`ERROR!: Network action is not defined in promptSelectNetwork()`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const nextMethod = getMapProperty(networkAction, "Method");
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectNetwork(). The Method property for ${networkAction} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextMethod(answers.network);
+                    return;
                }
-          });
+
+               let promptMessage = getMapProperty(networkAction, "PromptMessage");
+               promptMessage = promptMessage.replace("<networkName>", answers.network);
+
+               const promptOnConfirm = getMapProperty(networkAction, "PromptOnConfirm");
+               const promptOnDeny = getMapProperty(networkAction, "PromptOnDeny");
+
+               if (promptMessage.length === 0) {
+                    console.log(`ERROR! An error occurred in promptSelectNetwork(). The promptMessage property for ${networkAction} is blank`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof promptOnConfirm !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectNetwork(). The PromptOnConfirm property for ${networkAction} is not a function. It is ${typeof promptOnConfirm}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof promptOnDeny !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectNetwork(). The PromptOnDeny property for ${networkAction} is not a function. It is ${typeof promptOnDeny}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               nextMethod(promptMessage, promptOnConfirm, answers.network, promptOnDeny);
+          } else {
+               if (typeof networkAction === "undefined") {
+                    console.log(`ERROR!: Network action is not defined in promptSelectNetwork()`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               const nextMethod = getMapProperty(networkAction, "Method");
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectNetwork(). The Method property for ${networkAction} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               nextMethod(answers.network);
+          }
+     });
 }
 
 function promptSelectNetworkAction() {
@@ -1598,58 +1914,57 @@ function promptSelectNetworkAction() {
                message: 'Please select the network action',
                choices: [goBack, ...networkActions]
           },
-     ])
-          .then((answers) => {
-               if (answers.networkAction === goBack) {
-                    runPreviousAction(key);
-               } else {
-                    const nextAction = getMapProperty(answers.networkAction, "NextAction");
+     ]).then((answers) => {
+          if (answers.networkAction === goBack) {
+               runPreviousAction(key);
+          } else {
+               const nextAction = getMapProperty(answers.networkAction, "NextAction");
 
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The NextAction property for ${answers.networkAction} is not a string. It is ${typeof nextAction}`);
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The NextAction property for ${answers.networkAction} is not a string. It is ${typeof nextAction}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               // All other options require you to select the network next
+               if (answers.networkAction === pruneNetworkKey) {
+                    const promptMessage = getMapProperty(nextAction, "PromptMessage");
+
+                    const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
+                    const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
+
+                    if (promptMessage.length === 0) {
+                         console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The promptMessage property for ${nextAction} is blank`);
                          runPreviousAction(key);
                          return;
                     }
 
-                    // All other options require you to select the network next
-                    if (answers.networkAction === pruneNetworkKey) {
-                         const promptMessage = getMapProperty(nextAction, "PromptMessage");
-
-                         const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
-                         const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
-
-                         if (promptMessage.length === 0) {
-                              console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The promptMessage property for ${nextAction} is blank`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnConfirm !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnDeny !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         const nextMethod = getMapProperty(nextAction, "Method");
-
-                         if (typeof nextMethod !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.networkAction} was selected`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         nextMethod(promptMessage, promptOnConfirm, null, promptOnDeny);
-                    } else {
-                         runNextAction(nextAction, [nextAction])
+                    if (typeof promptOnConfirm !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
+                         runPreviousAction(key);
+                         return;
                     }
+
+                    if (typeof promptOnDeny !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
+                         runPreviousAction(key);
+                         return;
+                    }
+
+                    const nextMethod = getMapProperty(nextAction, "Method");
+
+                    if (typeof nextMethod !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectNetworkAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.networkAction} was selected`);
+                         runPreviousAction(key);
+                         return;
+                    }
+
+                    nextMethod(promptMessage, promptOnConfirm, null, promptOnDeny);
+               } else {
+                    runNextAction(nextAction, [nextAction])
                }
-          });
+          }
+     });
 }
 
 function promptSelectVolume(volumeAction) {
@@ -1685,62 +2000,61 @@ function promptSelectVolume(volumeAction) {
                message: 'Please select the volume',
                choices: [goBack, ...volumes]
           },
-     ])
-          .then((answers) => {
-               if (answers.volume === goBack) {
+     ]).then((answers) => {
+          if (answers.volume === goBack) {
+               runPreviousAction(key);
+          } else if (volumeAction === removeVolumeActionKey) {
+               const nextMethod = getMapProperty(volumeAction, "Method");
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectVolume(). The Method property for ${nextContainerAction} is not a function. It is ${typeof nextMethod} when the option ${answers.volumeAction} was selected`);
                     runPreviousAction(key);
-               } else if (volumeAction === removeVolumeActionKey) {
-                    const nextMethod = getMapProperty(volumeAction, "Method");
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectVolume(). The Method property for ${nextContainerAction} is not a function. It is ${typeof nextMethod} when the option ${answers.volumeAction} was selected`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    let promptMessage = getMapProperty(volumeAction, "PromptMessage");
-                    promptMessage = promptMessage.replace("<volumeName>", answers.volume);
-
-                    const promptOnConfirm = getMapProperty(volumeAction, "PromptOnConfirm");
-                    const promptOnDeny = getMapProperty(volumeAction, "PromptOnDeny");
-
-                    if (promptMessage.length === 0) {
-                         console.log(`ERROR! An error occurred in promptSelectVolume(). The promptMessage property for ${volumeAction} is blank`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof promptOnConfirm !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectVolume(). The PromptOnConfirm property for ${volumeAction} is not a function. It is ${typeof promptOnConfirm}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    if (typeof promptOnDeny !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectVolume(). The PromptOnDeny property for ${volumeAction} is not a function. It is ${typeof promptOnDeny}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextMethod(promptMessage, promptOnConfirm, answers.volume, promptOnDeny);
-               } else {
-                    if (typeof volumeAction === "undefined") {
-                         console.log(`ERROR!: Volume action is not defined in promptSelectVolume()`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    const nextMethod = getMapProperty(volumeAction, "Method");
-
-                    if (typeof nextMethod !== "function") {
-                         console.log(`ERROR! An error occurred in promptSelectVolume(). The Method property for ${volumeAction} is not a function. It is ${typeof nextMethod}`);
-                         runPreviousAction(key);
-                         return;
-                    }
-
-                    nextMethod(answers.volume);
+                    return;
                }
-          });
+
+               let promptMessage = getMapProperty(volumeAction, "PromptMessage");
+               promptMessage = promptMessage.replace("<volumeName>", answers.volume);
+
+               const promptOnConfirm = getMapProperty(volumeAction, "PromptOnConfirm");
+               const promptOnDeny = getMapProperty(volumeAction, "PromptOnDeny");
+
+               if (promptMessage.length === 0) {
+                    console.log(`ERROR! An error occurred in promptSelectVolume(). The promptMessage property for ${volumeAction} is blank`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof promptOnConfirm !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectVolume(). The PromptOnConfirm property for ${volumeAction} is not a function. It is ${typeof promptOnConfirm}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (typeof promptOnDeny !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectVolume(). The PromptOnDeny property for ${volumeAction} is not a function. It is ${typeof promptOnDeny}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               nextMethod(promptMessage, promptOnConfirm, answers.volume, promptOnDeny);
+          } else {
+               if (typeof volumeAction === "undefined") {
+                    console.log(`ERROR!: Volume action is not defined in promptSelectVolume()`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               const nextMethod = getMapProperty(volumeAction, "Method");
+
+               if (typeof nextMethod !== "function") {
+                    console.log(`ERROR! An error occurred in promptSelectVolume(). The Method property for ${volumeAction} is not a function. It is ${typeof nextMethod}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               nextMethod(answers.volume);
+          }
+     });
 }
 
 function promptSelectVolumeAction() {
@@ -1783,59 +2097,78 @@ function promptSelectVolumeAction() {
                message: 'Please select the volume action',
                choices: [goBack, ...volumeActions]
           },
-     ])
-          .then((answers) => {
-               if (answers.volumeAction === goBack) {
-                    runPreviousAction(key);
-               } else {
-                    const nextAction = getMapProperty(answers.volumeAction, "NextAction");
+     ]).then((answers) => {
+          if (answers.volumeAction === goBack) {
+               runPreviousAction(key);
+          } else {
+               const nextAction = getMapProperty(answers.volumeAction, "NextAction");
 
-                    if (typeof nextAction !== "string") {
-                         console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The NextAction property for ${answers.volumeAction} is not a string. It is ${typeof nextAction}`);
+               if (typeof nextAction !== "string") {
+                    console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The NextAction property for ${answers.volumeAction} is not a string. It is ${typeof nextAction}`);
+                    runPreviousAction(key);
+                    return;
+               }
+
+               if (answers.volumeAction === pruneVolumesKey) {
+                    const promptMessage = getMapProperty(nextAction, "PromptMessage");
+
+                    const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
+                    const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
+
+                    if (promptMessage.length === 0) {
+                         console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The promptMessage property for ${nextAction} is blank`);
                          runPreviousAction(key);
                          return;
                     }
 
-                    if (answers.volumeAction === pruneVolumesKey) {
-                         const promptMessage = getMapProperty(nextAction, "PromptMessage");
-
-                         const promptOnConfirm = getMapProperty(nextAction, "PromptOnConfirm");
-                         const promptOnDeny = getMapProperty(nextAction, "PromptOnDeny");
-
-                         if (promptMessage.length === 0) {
-                              console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The promptMessage property for ${nextAction} is blank`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnConfirm !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         if (typeof promptOnDeny !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         const nextMethod = getMapProperty(nextAction, "Method");
-
-                         if (typeof nextMethod !== "function") {
-                              console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.volumeAction} was selected`);
-                              runPreviousAction(key);
-                              return;
-                         }
-
-                         nextMethod(promptMessage, promptOnConfirm, null, promptOnDeny);
-                    } else if (answers.volumeAction === createVolumeKey) {
-                         runNextAction(answers.volumeAction);
-                    } else {
-                         runNextAction(nextAction, [nextAction])
+                    if (typeof promptOnConfirm !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The PromptOnConfirm property for ${nextAction} is not a function. It is ${typeof promptOnConfirm}`);
+                         runPreviousAction(key);
+                         return;
                     }
+
+                    if (typeof promptOnDeny !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The PromptOnDeny property for ${nextAction} is not a function. It is ${typeof promptOnDeny}`);
+                         runPreviousAction(key);
+                         return;
+                    }
+
+                    const nextMethod = getMapProperty(nextAction, "Method");
+
+                    if (typeof nextMethod !== "function") {
+                         console.log(`ERROR! An error occurred in promptSelectVolumeAction(). The Method property for ${nextAction} is not a function. It is ${typeof nextMethod} when the option ${answers.volumeAction} was selected`);
+                         runPreviousAction(key);
+                         return;
+                    }
+
+                    nextMethod(promptMessage, promptOnConfirm, null, promptOnDeny);
+               } else if (answers.volumeAction === createVolumeKey) {
+                    runNextAction(answers.volumeAction);
+               } else {
+                    runNextAction(nextAction, [nextAction])
                }
-          });
+          }
+     });
+}
+
+function pruneNetworks() {
+     const key = "PruneNetworksAction";
+
+     if (!isValidKey(key)) {
+          console.log(`ERROR! The key ${key} in pruneNetworks() is not valid`);
+          promptMainMenu();
+          return;
+     }
+
+     const pruneNetworksResult = executeShellCommand(executable, ["network", "prune", "-f"]);
+
+     if (pruneNetworksResult[0] === "ERROR") {
+          console.log(pruneNetworksResult[1]);
+          runPreviousAction(key);
+          return;
+     }
+
+     runNextAction(key);
 }
 
 function pruneSystem(key) {
@@ -2277,6 +2610,80 @@ function runRecontainRule(ruleName) {
      console.log(`The Recontain ${ruleName} has been recreated based on ${ruleObj.Filename}` + (typeof ruleObj.Port !== "undefined" ? ` and is running on port ${ruleObj.Port}` : ``));
 
      promptRecontainRules();
+}
+
+function saveComposeFileAction() {
+     const fileName = readline.question("Enter the compose file name or press enter to exit: ");
+
+     if (fileName === "") {
+          return;
+     }
+
+     try {
+          fs.writeFileSync(fileName, composeFile);
+     } catch (err) {
+          console.error(err);
+     }
+}
+
+function setContainerNameAction() {
+     const key = "SetContainerNameAction";
+
+     const containerName = readline.question("Enter the container name or press enter to exit: ");
+
+     if (containerName === "") {
+          runPreviousAction(key);
+          return;
+     } else {
+          generateComposeFileTemplate.containerName = containerName;
+
+          runNextAction(key);
+     }
+}
+
+function setImageNameAction() {
+     const key = "SetImageNameAction";
+
+     const imageName = readline.question("Enter the image name or press enter to exit: ");
+
+     if (imageName === "") {
+          runPreviousAction(key);
+          return;
+     } else {
+          generateComposeFileTemplate.imageName = imageName;
+
+          runNextAction(key);
+     }
+}
+
+function setNetworkNameAction() {
+     const key = "SetNetworkNameAction";
+
+     const networkName = readline.question("Enter the network name or press enter to exit: ");
+
+     if (networkName === "") {
+          runPreviousAction(key);
+          return;
+     } else {
+          generateComposeFileTemplate.networkName = networkName;
+
+          runNextAction(key);
+     }
+}
+
+function setServiceNameAction() {
+     const key = "SetServiceNameAction";
+
+     const serviceName = readline.question("Enter the service name in all lower case or press enter to exit: ");
+
+     if (serviceName === "") {
+          runPreviousAction(key);
+          return;
+     } else {
+          generateComposeFileTemplate.serviceName = serviceName.toLowerCase();
+
+          runNextAction(key);
+     }
 }
 
 function sortMethod(a, b) {

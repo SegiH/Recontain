@@ -1,0 +1,35 @@
+version: '3.7'
+ 
+networks:
+     default:
+         name: NETWORKNAME
+         external: true
+ 
+services:
+    SERVICENAME:
+         container_name: CONTAINERNAME_unsecured
+         stdin_open: true
+         tty: true
+         image: IMAGENAME
+         ENVIRONMENTVARS
+         VOLUMES
+         PORTS
+         network_mode: container:CONTAINERNAME
+         restart: unless-stopped
+    SERVICENAME-tailscale:
+         container_name: CONTAINERNAME
+         hostname: CONTAINERNAME
+         image: tailscale/tailscale:stable
+         environment:
+             - TS_STATE_DIR=/var/lib
+         volumes:
+             - /root/docker-data/SERVICENAME/Tailscale:/var/lib 
+             - /dev/net/tun:/dev/net/tun
+         cap_add: # Required for tailscale to work 
+             - net_admin
+             - sys_module
+         command: tailscaled
+         privileged: true
+         restart: unless-stopped
+         networks:
+             - default
